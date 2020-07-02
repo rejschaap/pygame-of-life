@@ -23,23 +23,7 @@ def main():
 
     while True:
         state = handle_events(state)
-
-        if state["gliders"]:
-            board = add_gliders(board, state["gliders"])
-
-        if state["clear"]:
-            board = []
-
-        if not state["pause"] and not state["selecting"]:
-            board = update(board)
-        elif "step" in state:
-            board = update(board)
-
-        if "select" in state:
-            for pos in state["select"]:
-                if pos not in board:
-                    board.append(pos)
-
+        board = update(board, state)
         draw(screen, board, state["pause"])
         pygame.display.update()
         clock.tick(FRAME_RATE)
@@ -57,7 +41,24 @@ def add_gliders(board, count):
     return new_board
 
 
-def update(board):
+def update(board, state):
+    board = [] if state["clear"] else board.copy()
+    board = add_gliders(board, state["gliders"])
+
+    if not state["pause"] and not state["selecting"]:
+        board = step(board)
+    elif "step" in state:
+        board = step(board)
+
+    if "select" in state:
+        for pos in state["select"]:
+            if pos not in board:
+                board.append(pos)
+
+    return board
+
+
+def step(board):
     """Update the cells in the board according to the Game of Life rules"""
     next_board = []
 
@@ -119,7 +120,7 @@ def draw_grid(screen, paused):
 
 
 def handle_events(state):
-    """Quit on keypress"""
+    """Handle keyboard and mouse events and update state accordingly"""
     new_state = dict(pause=state["pause"], selecting=state["selecting"], select=[], clear=False, gliders=0)
 
     for event in pygame.event.get():
