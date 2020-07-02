@@ -12,11 +12,10 @@ GRID_COLOR = (42, 88, 164)
 ZOOM = 32
 FRAME_RATE = 15
 
-GLIDER = [(0, 1), (1, 2), (2, 0), (2, 1), (2, 2)]
-
 
 def main():
-    state = dict(pause=False, selecting=False, clear=False, init=False, gliders=0)
+    """Your basic game loop"""
+    state = {}
     clock = pygame.time.Clock()
     screen = create_screen()
     board = add_gliders([], 10)
@@ -29,25 +28,24 @@ def main():
         clock.tick(FRAME_RATE)
 
 
-def add_gliders(board, count):
-    new_board = board.copy()
-
+def add_gliders(current_board, count):
     """Place the specified amount of gliders on the board"""
+    GLIDER = [(0, 1), (1, 2), (2, 0), (2, 1), (2, 2)]
+    next_board = current_board.copy()
+
     for i in range(count):
         dx, dy = int(random() * WIDTH), int(random() * HEIGHT)
         translated_glider = [(x + dx, y + dy) for (x, y) in GLIDER]
-        new_board.extend(translated_glider)
+        next_board.extend(translated_glider)
 
-    return new_board
+    return next_board
 
 
-def update(board, state):
-    board = [] if state["clear"] else board.copy()
-    board = add_gliders(board, state["gliders"])
+def update(current_board, state):
+    """Update the game board based on the control state"""
+    board = [] if state["clear"] else current_board.copy()
 
-    if not state["pause"] and not state["selecting"]:
-        board = step(board)
-    elif "step" in state:
+    if not(state["pause"] or state["selecting"]) or state["step"]:
         board = step(board)
 
     if "select" in state:
@@ -55,20 +53,22 @@ def update(board, state):
             if pos not in board:
                 board.append(pos)
 
+    board = add_gliders(board, state["gliders"])
+
     return board
 
 
-def step(board):
+def step(current_board):
     """Update the cells in the board according to the Game of Life rules"""
     next_board = []
 
     for y in range(HEIGHT):
         for x in range(WIDTH):
-            count = count_neighbours(board, x, y)
+            count = count_neighbours(current_board, x, y)
 
-            if (x, y) in board and (count == 2 or count == 3):
+            if (x, y) in current_board and (count == 2 or count == 3):
                 next_board.append((x, y))
-            elif (x, y) not in board and count == 3:
+            elif (x, y) not in current_board and count == 3:
                 next_board.append((x, y))
 
     return next_board
@@ -80,9 +80,9 @@ def count_neighbours(state, x, y):
 
     for j in range(y - 1, y + 2):
         for i in range(x - 1, x + 2):
-            isNeighbourAlive = (i%WIDTH, j%HEIGHT) in state 
-            isSelf = (i, j) == (x, y) 
-            if not isSelf and isNeighbourAlive:
+            is_neighbour_alive = (i % WIDTH, j % HEIGHT) in state
+            is_self = (i, j) == (x, y)
+            if not is_self and is_neighbour_alive:
                 count += 1
 
     return count
@@ -121,32 +121,54 @@ def draw_grid(screen, paused):
 
 def handle_events(state):
     """Handle keyboard and mouse events and update state accordingly"""
-    new_state = dict(pause=state["pause"], selecting=state["selecting"], select=[], clear=False, gliders=0)
+    pause = state.get("pause", False)
+    selecting = state.get("selecting", False)
+    select = set()
+    clear = False
+    gliders = 0
+    step = False
 
     for event in pygame.event.get():
         if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
-            new_state["pause"] = not state["pause"]
-        elif event.type == pygame.KEYDOWN and event.key >= pygame.K_0 and event.key <= pygame.K_9:
-            new_state["gliders"] = event.key - pygame.K_0
+            pause = not pause
+        elif (
+            event.type == pygame.KEYDOWN
+            and event.key >= pygame.K_0
+            and event.key <= pygame.K_9
+        ):
+            gliders = event.key - pygame.K_0
         elif event.type == pygame.KEYDOWN and event.key == pygame.K_BACKSPACE:
-            new_state["clear"] = True
+            clear = True
         elif event.type == pygame.KEYDOWN and event.key == pygame.K_n:
-            new_state["step"] = True
+            step = True
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            new_state["selecting"] = True
-            pos = (event.pos[0] // ZOOM, event.pos[1] // ZOOM)
-            new_state["select"].append(pos)
+            selecting = True
+            select.add(get_position(event))
         elif event.type == pygame.MOUSEBUTTONUP:
-            new_state["selecting"] = False
-        elif event.type == pygame.MOUSEMOTION and new_state["selecting"]:
-            pos = (event.pos[0] // ZOOM, event.pos[1] // ZOOM)
-            if pos not in new_state["select"]:
-                new_state["select"].append(pos)
-        elif event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and (event.key == pygame.K_q or event.key == pygame.K_ESCAPE)):
+            selecting = False
+        elif event.type == pygame.MOUSEMOTION and selecting:
+            select.add(get_position(event))
+        elif (
+            event.type == pygame.QUIT
+            or event.type == pygame.KEYDOWN and event.key == pygame.K_q
+            or event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE
+        ):
             pygame.quit()
             sys.exit()
 
-    return new_state
+    return dict(
+        pause=pause,
+        selecting=selecting,
+        select=select,
+        step=step,
+        clear=clear,
+        gliders=gliders,
+    )
+
+
+def get_position(event):
+    """Get cell for mouse position"""
+    return (event.pos[0] // ZOOM, event.pos[1] // ZOOM)
 
 
 def create_screen():

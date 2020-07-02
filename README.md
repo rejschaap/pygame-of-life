@@ -1,10 +1,10 @@
-# Game of Life
+# PyGame of Life
 
-John Conway's famous Game of Life implemented in python with pygame.
+John Conway's famous Game of Life implemented in Python with PyGame.
 
 ## Run
 
-The only requirement is pygame, install it with pip.
+The only requirement is PyGame, install it with pip.
 
 ```
 pip install pygame
