@@ -27,4 +27,4 @@ The following controls are available.
 * **0-9** spawn a number of gliders at random positions
 * **ESCAPE** or **Q** to quit
 
-![Example](example.mov "Example")
+![Example](example.gif "Example")
